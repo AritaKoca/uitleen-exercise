@@ -41,7 +41,6 @@ The requirements file is leading. These hints help you check the usual ones.
 - **Docs (R9):** the API table and the migration log in `README.md` are updated when endpoints or migrations change.
 - **Git (R11):** see the next section.
 - **T and ML rules:** follow the text of the rule.
-- A migration that adds a foreign key column to a table that other tables point to may contain `export const config = { transaction: false }` and `PRAGMA foreign_keys` set to OFF and back to ON. That is the accepted workaround for SQLite. Do not flag it.
 
 ## Course conventions
 Use these for `other_findings`, and to judge R11.

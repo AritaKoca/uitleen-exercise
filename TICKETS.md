@@ -8,11 +8,13 @@ The tickets do **not** depend on each other. You can do any ticket on its own, i
 
 Remember: never change a migration that already ran, always make a new one (`npm run migrate:make name_of_the_migration`), make one migration per change, and write a working `down` function.
 
+**Definition of done (every ticket):** test your `down` before you open the pull request. Run `npx knex migrate:rollback` followed by `npm run migrate` (and `npm run seed` if your ticket has seeds). It must work without errors. Note that `rollback` undoes the whole last batch, so it can undo several of your migrations at once.
+
 Every pull request is checked automatically against `.github/pr-requirements.md`. When a ticket brings its own rules, add them there under the number of the ticket (`ML-3.1`, `ML-3.2`, ...), so rules of different tickets never clash.
 
 Tips for all tickets:
 - `escapeHtml` in `public/Tool.ts` is exported, so your own classes can use it too.
-- If Knex fails with `FOREIGN KEY constraint failed` while changing a table, read the SQLite tip in ML-4.
+- SQLite cannot add a foreign key to an existing table without rebuilding it, and that fails when other tables point to it and contain data. Prefer a new table (like a link table) over a new foreign key column on a table that others point to.
 
 ---
 
@@ -45,7 +47,6 @@ Tips for all tickets:
 - [ ] The response of `GET /api/tools/:id/history` contains no student numbers.
 - [ ] The history of a tool that does not exist returns `404`.
 - [ ] Deleting a tool that has a history works, and its history is gone too.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 ---
 
@@ -83,7 +84,6 @@ Tips for all tickets:
 - [ ] One tool can have multiple reports.
 - [ ] A description like `<b>cracked</b>` is shown as plain text, not as bold.
 - [ ] Deleting a tool that has reports works, and its reports are gone too.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 **Stretch:** Without more work, an unusable tool stays unusable forever. Let `PATCH /api/tools/:id` accept `unusable` and add a **Repaired** button for unusable tools.
 
@@ -116,7 +116,6 @@ Tips for all tickets:
 - [ ] Filtering on a category only shows the tools of that category, and "All categories" shows everything again.
 - [ ] Creating a category that already exists returns `409`.
 - [ ] Adding a tool with a category that does not exist returns `404`.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 ---
 
@@ -128,16 +127,17 @@ Tips for all tickets:
 
 **Migration**
 - Create a new `roles` table with: `id` and `name` (required, unique).
-- In a separate migration, add a `roleId` column (foreign key to `roles.id`) to `students`.
+- In a separate migration, create a link table `student_roles` (a pivot table, many-to-many) with: `studentId` (foreign key to `students.id`) and `roleId` (foreign key to `roles.id`). Together they are the primary key, so a student can have a role only once. Look up `primary` and `onDelete` in the Knex documentation.
+- Why a link table and not a `roleId` column on `students`? Adding a foreign key column to `students` makes SQLite rebuild that table, which fails while `tools` points to students. A new table avoids the problem and also lets a student have more than one role later.
 - Think about it: the students that already exist have no role yet. How do they get one? Tip: the seeds run after the migrations.
-- SQLite tip: adding a column with a foreign key makes Knex rebuild the whole `students` table. SQLite refuses that while other tables (here `tools`) point to students and contain data: `FOREIGN KEY constraint failed`. In the migration that adds `roleId`, add `export const config = { transaction: false };`, and in `up` and in `down` run `await knex.raw("PRAGMA foreign_keys = OFF");` before the change and `await knex.raw("PRAGMA foreign_keys = ON");` after it. (Without the first line, the pragma does nothing: SQLite ignores it inside a transaction.)
 
 **Seeds**
 - Add `seeds/00_roles.ts` (the `00` makes it run before `01_students.ts`) that seeds the roles `STUDENT` and `ADMIN`. `ADMIN` is not used yet. Like the students seed, it must be safe to run twice.
-- Change `seeds/01_students.ts` so every seeded student gets the `STUDENT` role, including students that are already in the database without a role.
+- Change `seeds/01_students.ts` so every seeded student gets the `STUDENT` role (a row in `student_roles`), including students that are already in the database without a role. Running it twice must not create double rows.
 
 **Endpoints**
 - New: `POST /api/students` with body `{ studentNumber, firstName }`: creates the student with the role `STUDENT` and returns `201` with the new student, including the name of the role. Returns `400` when the student number is not exactly 5 digits or the first name is empty, and `409` when the student number is already registered.
+- Creating the student and linking the role belong together: look up `db.transaction` in the Knex documentation.
 - The role is looked up by name on the server. It is never taken from `req.body`: a visitor must not be able to register as `ADMIN`.
 - Tip: keep the student number a string, so `00123` keeps its zeros.
 
@@ -151,10 +151,9 @@ Tips for all tickets:
 - [ ] Sending `"role": "ADMIN"` or a `roleId` in the body of `POST /api/students` changes nothing: the student still gets `STUDENT`.
 - [ ] A student number that is not 5 digits, or an empty first name, returns `400`.
 - [ ] Registering a student number that already exists returns `409`.
-- [ ] Running `npm run seed` twice does not create double roles and does not fail.
+- [ ] Running `npm run seed` twice does not create double roles or double `student_roles` rows and does not fail.
 - [ ] After `npm run seed`, all 20 seeded students have the role `STUDENT`.
-- [ ] The migration also works while a tool is lent out (so there is data pointing to `students`).
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` and `npm run seed` works without errors.
+- [ ] The migrations also work while a tool is lent out (so there is data pointing to `students`).
 
 ---
 
@@ -184,7 +183,6 @@ Tips for all tickets:
 - [ ] An `imageUrl` like `javascript:alert(1)` or `not a url` returns `400`.
 - [ ] An image URL that contains a quote (`"`) does not break the HTML of the page.
 - [ ] Every picture has an `alt` text.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 ---
 
@@ -219,7 +217,6 @@ Tips for all tickets:
 - [ ] A title like `<b>Quest 3</b>` is shown as plain text, not as bold.
 - [ ] Removing a link works and the link is gone after refreshing the page.
 - [ ] Deleting a tool that has links works, and its links are gone too.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 ---
 
@@ -254,7 +251,6 @@ Tips for all tickets:
 - [ ] Canceling a tool that is not lent out returns `409`, and one that does not exist returns `404`.
 - [ ] `lentAt` is filled in when a tool is lent out and empty again after it is returned.
 - [ ] Deleting a tool that has cancellations works.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 ---
 
@@ -292,4 +288,3 @@ Reservations do not influence lending in this ticket: only the reservations them
 - [ ] A tool that does not exist returns `404`.
 - [ ] No response contains student numbers.
 - [ ] Deleting a tool that has reservations works, and its reservations are gone too.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
