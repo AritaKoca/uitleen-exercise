@@ -1,0 +1,32 @@
+{
+  "name": "app-template",
+  "version": "1.0.0",
+  "description": "TODO: one-line description of the project",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "compile": "tsc --watch",
+    "serve": "nodemon main.js",
+    "migrate": "knex migrate:latest",
+    "migrate:make": "knex migrate:make -x ts",
+    "dev": "npm run build && npm run migrate && concurrently --kill-others \"npm run compile\" \"npm run serve\""
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "knex": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "concurrently": "^10.0.6",
+    "nodemon": "^3.1.14",
+    "typescript": "^7.0.2"
+  }
+}
