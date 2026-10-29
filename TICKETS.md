@@ -206,3 +206,42 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] Removing a link works and the link is gone after refreshing the page.
 - [ ] Deleting a tool that has links works, and its links are gone too.
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
+
+---
+
+## ML-7 · Coordinator page: cancel reservations
+
+**Branch:** `feature/ml-7-coordinator-reservations`
+
+**Story:** As a coordinator, I want a page with all reservations where I can cancel one with a reason, so I can handle problems (a broken tool, a student who does not show up, ...) and still see afterwards what happened.
+
+Note: reservations do not exist in the app yet, and a student cannot make one yet. This ticket creates the table and shows sample data. Reservations do not influence lending yet either.
+
+**Migration**
+- Create a new `reservations` table with: `id`, `toolId` (foreign key to `tools.id`), `studentId` (foreign key to `students.id`), `startDate` and `endDate` (text, `YYYY-MM-DD`), `canceledAt` (empty unless canceled) and `cancelReason` (empty unless canceled).
+- A canceled reservation is **not deleted**: it stays in the database, so there is a history of what happened and why.
+
+**Seeds**
+- Add `seeds/02_reservations.ts` with a few sample reservations (some in the past, some in the future), so the page has something to show.
+- Think about it: reservations need tools and students, but tools are not seeded. Add a few sample tools in the same seed, but only when the `tools` table is empty.
+- The seed must be safe to run twice: do not add reservations again when there already are some.
+
+**Endpoints**
+- New: `GET /api/reservations`: returns all reservations, including the canceled ones, with the `name` of the tool and the `firstName` of the student (tip: `join`). Sort them by `startDate`, the next ones first.
+- New: `POST /api/reservations/:id/cancel` with body `{ reason }`: fills in `canceledAt` (`new Date().toISOString()`) and `cancelReason`, and returns the updated reservation. Returns `400` when the reason is empty, `404` when the reservation does not exist and `409` when it is already canceled.
+- There is no login yet, so everyone who knows the URL can use these endpoints. Never return student numbers: they are part of how students identify themselves. Think about it: what must be added before this goes live?
+
+**Frontend**
+- Make a `Reservation` class in `public/`, like the `Tool` class, with a `renderHtmlString()` that renders one row of a table.
+- Add a new page `public/coordinator.html` with its own script `public/coordinator.ts`, and link to it from `index.html` (and back).
+- The page shows a table of all reservations: tool, first name, from, until and status ("Active", or "Canceled on ..." with the reason).
+- Every active reservation has a **Cancel** button. It asks for a reason (required) and then cancels the reservation. A canceled reservation has no button.
+
+**Acceptance criteria**
+- [ ] The page shows all reservations, including canceled ones, and no student numbers.
+- [ ] Canceling with a reason shows "Canceled" and the reason on the page, and the row is still in the database with `canceledAt` and `cancelReason` filled in.
+- [ ] Canceling without a reason returns `400`, and the page shows a message.
+- [ ] Canceling a reservation that is already canceled returns `409`, and one that does not exist returns `404`.
+- [ ] A reason like `<b>broken</b>` is shown as plain text, not as bold.
+- [ ] Running `npm run seed` twice does not create double reservations or tools.
+- [ ] `npx knex migrate:rollback` followed by `npm run migrate` and `npm run seed` works without errors.
