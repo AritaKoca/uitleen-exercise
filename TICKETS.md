@@ -171,3 +171,38 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] An image URL that contains a quote (`"`) does not break the HTML of the page.
 - [ ] Every picture has an `alt` text.
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
+
+---
+
+## ML-6 · Manuals and tutorials
+
+**Branch:** `feature/ml-6-manuals-and-tutorials`
+
+**Story:** As a visitor, I want to find links to the manual or a tutorial of a tool, so I know how to use it before I lend it out.
+
+**Migration**
+- Create a new `tool_links` table with: `id`, `toolId` (foreign key to `tools.id`), `title` (required), `url` (required, up to 500 characters) and `type` (`'manual'` or `'tutorial'`, default `'manual'`).
+- Think about it: what should happen to the links when their tool is deleted? Look up `onDelete` in the Knex documentation.
+
+**Endpoints**
+- New: `POST /api/tools/:id/links` with body `{ title, url, type }`: saves the link and returns `201` with it. Returns `400` when the title is empty, when the url does not start with `http://` or `https://`, or when the type is not one of the allowed types. Returns `404` when the tool does not exist.
+- New: `GET /api/tools/:id/links`: returns the links of one tool. Returns `404` when the tool does not exist.
+- New: `DELETE /api/links/:id`: removes one link, `404` when it does not exist.
+- Check the existing `DELETE /api/tools/:id`: deleting a tool that has links must still work.
+
+**Frontend**
+- Make a `ToolLink` class in `public/`, like the `Tool` class, with a `renderHtmlString()` that renders one link.
+- Add an **Info** button to every tool. It shows the links of that tool, split in manuals and tutorials, and a small form to add a link (title, url and a `<select>` for the type).
+- Links open in a new tab. Add `rel="noopener noreferrer"` to them. Think about it: why?
+- Every link has a **Remove** button.
+
+**Acceptance criteria**
+- [ ] A manual and a tutorial can be added to a tool and are shown under the right heading.
+- [ ] One tool can have multiple links.
+- [ ] A link opens in a new tab.
+- [ ] A url like `javascript:alert(1)` returns `400`. So does a type that is not allowed, or an empty title.
+- [ ] Adding a link to a tool that does not exist returns `404`.
+- [ ] A title like `<b>Quest 3</b>` is shown as plain text, not as bold.
+- [ ] Removing a link works and the link is gone after refreshing the page.
+- [ ] Deleting a tool that has links works, and its links are gone too.
+- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
