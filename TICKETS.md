@@ -141,3 +141,33 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] Running `npm run seed` twice does not create double roles and does not fail.
 - [ ] After `npm run seed`, all 20 seeded students have the role `STUDENT`.
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` and `npm run seed` works without errors.
+
+---
+
+## ML-5 · Images for tools
+
+**Branch:** `feature/ml-5-tool-images`
+
+**Story:** As a visitor, I want to see a picture of every tool, so I know what I am about to lend out.
+
+**Migration**
+- Add an optional `imageUrl` string column (up to 500 characters) to `tools`. It is empty for tools without a picture, so the tools that already exist keep working.
+- We only store the URL of the picture. Uploading files is not part of this ticket.
+
+**Endpoints**
+- Change `POST /api/tools` and `PATCH /api/tools/:id`: they accept an optional `imageUrl`.
+- Return `400` when an `imageUrl` is given that does not start with `http://` or `https://`. Think about it: why is that important? (Look up what a `javascript:` URL does.)
+- `GET /api/tools` returns the `imageUrl` too, without any other change.
+
+**Frontend**
+- Add `imageUrl` to the `Tool` class and show the picture in `renderHtmlString()` with an `<img>`. Use the name of the tool as the `alt` text.
+- A tool without an `imageUrl` shows no `<img>` at all, so there is no broken picture icon.
+- Add a text input for the image URL to the "Add a tool" form.
+
+**Acceptance criteria**
+- [ ] A tool added with an image URL shows the picture.
+- [ ] Tools without an image URL, including the ones that existed before this ticket, still show normally.
+- [ ] An `imageUrl` like `javascript:alert(1)` or `not a url` returns `400`.
+- [ ] An image URL that contains a quote (`"`) does not break the HTML of the page.
+- [ ] Every picture has an `alt` text.
+- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
