@@ -1,7 +1,7 @@
 {
-  "name": "app-template",
+  "name": "medialab-lending",
   "version": "1.0.0",
-  "description": "TODO: one-line description of the project",
+  "description": "A platform to lend out tools from the Media Lab library, such as phones and VR headsets",
   "main": "main.js",
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "serve": "nodemon main.js",
     "migrate": "knex migrate:latest",
     "migrate:make": "knex migrate:make -x ts",
-    "dev": "npm run build && npm run migrate && concurrently --kill-others \"npm run compile\" \"npm run serve\""
+    "seed": "knex seed:run",
+    "dev": "npm run build && npm run migrate && npm run seed && concurrently --kill-others \"npm run compile\" \"npm run serve\""
   },
   "author": "",
   "license": "MIT",

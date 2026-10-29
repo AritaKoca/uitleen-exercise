@@ -15,7 +15,7 @@ Notes for humans (these comments are NOT sent to the AI agent):
 - **R1 Migrations are append-only:** A database change is made in a new file in `migrations/`. No existing migration file is edited, renamed or deleted.
 - **R2 Reversible migrations:** Every new migration has a working `down` function that exactly undoes `up`, including any data it moved.
 - **R3 Whitelisted input:** Endpoints in `main.ts` pick the fields they accept from `req.body` one by one. `req.body` is never passed straight to the database.
-- **R4 Correct responses:** New or changed endpoints return fitting status codes (201 created, 400 invalid input, 404 unknown id, 500 on database errors) and log errors with `console.error`.
+- **R4 Correct responses:** New or changed endpoints return fitting status codes (201 created, 400 invalid input, 401 student not recognised, 404 unknown id, 409 conflict such as a tool that is already lent out, 500 on database errors) and log errors with `console.error`.
 - **R5 Frontend and backend stay in sync:** A new or changed API field or endpoint is reflected in `public/` (the class, `script.ts`, `index.html`), and the other way around.
 - **R6 Escaped output:** Values typed by visitors that end up in an HTML string are escaped.
 - **R7 Sources only:** Only `.ts` sources are committed. No compiled `.js`, no `db/*.db` files, no `node_modules`, no `.env` files.
@@ -25,4 +25,6 @@ Notes for humans (these comments are NOT sent to the AI agent):
 
 ## Topic-specific requirements
 
-No topic-specific requirements yet. Add them here as `T1`, `T2`, ...
+- **T1 Student check:** A student can only lend out a tool after the combination of student number and first name is checked against the `students` table. No endpoint lends out a tool on a student number alone.
+- **T2 Lending state:** A tool that is already lent out cannot be lent out again (409), and a tool that is not lent out cannot be returned (409).
+- **T3 Seeds are safe to rerun:** Seed files can run more than once without creating duplicates or failing, and contain only made-up data, no real student numbers or names.

@@ -4,18 +4,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>App template</title>
+  <title>Media Lab tools</title>
   <link href="style.css" rel="stylesheet" />
 </head>
 
 <body>
-  <h1>App template</h1>
+  <h1>Media Lab tools</h1>
+
+  <h2>Who are you?</h2>
+  <div class="container">
+    <input type="text" id="studentNumber" placeholder="Student number" /><br />
+    <input type="text" id="firstName" placeholder="First name" /><br />
+  </div>
+  <p id="message"></p>
+
+  <h2>Add a tool</h2>
   <form class="container">
-    <input type="text" id="itemName" placeholder="Name" /><br />
-    <input type="text" id="itemDescription" placeholder="Description" /><br />
-    <button type="submit" id="submitForm">Submit</button>
+    <input type="text" id="toolName" placeholder="Name of the tool" /><br />
+    <input type="text" id="toolDescription" placeholder="Description" /><br />
+    <button type="submit" id="submitForm">Add</button>
   </form>
-  <div id="itemList">
+
+  <h2>Tools</h2>
+  <div id="toolList">
   </div>
   <!-- script.js is compiled from script.ts by "npm run compile" -->
   <script src="script.js" type="module"></script>
