@@ -68,6 +68,8 @@ Every pull request is checked by an AI agent. The workflow in `.github/workflows
 
 **Good to know**
 - The requirements and the script are read from the base branch. A pull request cannot change the rules it is judged by, and the pull request that first adds these files is not checked.
+- The agent also gets the branch name and the commit messages, so it can check the Git conventions of the course.
+- The instructions of the agent are in `.github/agent-instructions.md`. Paste them in the *Instructions* field of the DigitalOcean agent and keep them in sync with `.github/pr-requirements.md`.
 - Draft pull requests and pull requests from forks are skipped.
 - Diffs over 120 000 characters are truncated, and the comment says so.
 - To make a failing verdict fail the check, set `FAIL_ON_VERDICT` to `"true"` in the workflow.
@@ -75,8 +77,7 @@ Every pull request is checked by an AI agent. The workflow in `.github/workflows
 ## Todo
 * Add express CORS
 * Edit a tool in the frontend (the PATCH endpoint already exists)
-* Show the first name of the student who has a tool
-* Later: reservations, and a difference between administrators and students
+* Pick a ticket from `TICKETS.md`
 
 ## License
 MIT

@@ -35,6 +35,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_BODY: ${{ github.event.pull_request.body }}
           # Agent endpoint (OpenAI-compatible chat completions), e.g. your
           # DigitalOcean GenAI agent: https://<agent-id>.agents.do-ai.run

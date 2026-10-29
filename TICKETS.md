@@ -2,9 +2,17 @@
 
 Every ticket needs three things: a **migration**, a **backend change** (endpoints) and a **frontend change**. Each ticket has its own **branch**: create it from `main`, work on it, and open a pull request when you are done.
 
+A ticket only needs a seed when it has a **Seeds** section. If there is none, do not add one.
+
+The tickets do **not** depend on each other. You can do any ticket on its own, in any order, starting from `main`. Every ticket has its own tables and columns.
+
 Remember: never change a migration that already ran, always make a new one (`npm run migrate:make name_of_the_migration`), make one migration per change, and write a working `down` function.
 
-Every pull request is checked automatically against `.github/pr-requirements.md`. When a ticket brings its own rules, add them there as `T4`, `T5`, ...
+Every pull request is checked automatically against `.github/pr-requirements.md`. When a ticket brings its own rules, add them there under the number of the ticket (`ML-3.1`, `ML-3.2`, ...), so rules of different tickets never clash.
+
+Tips for all tickets:
+- `escapeHtml` in `public/Tool.ts` is exported, so your own classes can use it too.
+- If Knex fails with `FOREIGN KEY constraint failed` while changing a table, read the SQLite tip in ML-4.
 
 ---
 
@@ -18,6 +26,7 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - Create a new `loans` table with: `id`, `toolId` (foreign key to `tools.id`), `studentId` (foreign key to `students.id`), `lentAt` (required) and `returnedAt` (empty until the tool is returned).
 - Tip: store dates as text with `new Date().toISOString()`.
 - Think about it: tools that are lent out right now have no row in `loans` yet. What happens when they are returned?
+- Think about it: deleting a tool that has a history must still work. Look up `onDelete` in the Knex documentation.
 
 **Endpoints**
 - Change `POST /api/tools/:id/lend`: besides marking the tool as lent out, it adds a row to `loans`.
@@ -35,6 +44,7 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] A tool that is lent out right now shows "Still lent out".
 - [ ] The response of `GET /api/tools/:id/history` contains no student numbers.
 - [ ] The history of a tool that does not exist returns `404`.
+- [ ] Deleting a tool that has a history works, and its history is gone too.
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 ---
@@ -49,6 +59,7 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - Create a new `broken_reports` table with: `id`, `toolId` (foreign key to `tools.id`), `description` (required), `unusable` (boolean, default `false`) and `createdAt`.
 - In a separate migration, add an `unusable` boolean column (default `false`) to `tools`.
 - Think about it: why is `unusable` stored in both tables?
+- Think about it: deleting a tool that has reports must still work. Look up `onDelete` in the Knex documentation.
 
 **Endpoints**
 - New: `POST /api/tools/:id/broken-reports` with body `{ description, unusable }`: saves the report and returns `201` with it. Returns `400` when the description is empty and `404` when the tool does not exist. When `unusable` is `true`, the tool itself is marked as unusable too.
@@ -71,6 +82,7 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] A report marked **Still usable** does not block lending.
 - [ ] One tool can have multiple reports.
 - [ ] A description like `<b>cracked</b>` is shown as plain text, not as bold.
+- [ ] Deleting a tool that has reports works, and its reports are gone too.
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
 
 **Stretch:** Without more work, an unusable tool stays unusable forever. Let `PATCH /api/tools/:id` accept `unusable` and add a **Repaired** button for unusable tools.
@@ -118,6 +130,7 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - Create a new `roles` table with: `id` and `name` (required, unique).
 - In a separate migration, add a `roleId` column (foreign key to `roles.id`) to `students`.
 - Think about it: the students that already exist have no role yet. How do they get one? Tip: the seeds run after the migrations.
+- SQLite tip: adding a column with a foreign key makes Knex rebuild the whole `students` table. SQLite refuses that while other tables (here `tools`) point to students and contain data: `FOREIGN KEY constraint failed`. In the migration that adds `roleId`, add `export const config = { transaction: false };`, and in `up` and in `down` run `await knex.raw("PRAGMA foreign_keys = OFF");` before the change and `await knex.raw("PRAGMA foreign_keys = ON");` after it. (Without the first line, the pragma does nothing: SQLite ignores it inside a transaction.)
 
 **Seeds**
 - Add `seeds/00_roles.ts` (the `00` makes it run before `01_students.ts`) that seeds the roles `STUDENT` and `ADMIN`. `ADMIN` is not used yet. Like the students seed, it must be safe to run twice.
@@ -140,6 +153,7 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] Registering a student number that already exists returns `409`.
 - [ ] Running `npm run seed` twice does not create double roles and does not fail.
 - [ ] After `npm run seed`, all 20 seeded students have the role `STUDENT`.
+- [ ] The migration also works while a tool is lent out (so there is data pointing to `students`).
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` and `npm run seed` works without errors.
 
 ---
@@ -209,39 +223,73 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 
 ---
 
-## ML-7 · Coordinator page: cancel reservations
+## ML-7 · Coordinator page: cancel lendings
 
-**Branch:** `feature/ml-7-coordinator-reservations`
+**Branch:** `feature/ml-7-coordinator-lendings`
 
-**Story:** As a coordinator, I want a page with all reservations where I can cancel one with a reason, so I can handle problems (a broken tool, a student who does not show up, ...) and still see afterwards what happened.
-
-Note: reservations do not exist in the app yet, and a student cannot make one yet. This ticket creates the table and shows sample data. Reservations do not influence lending yet either.
+**Story:** As a coordinator, I want a page with everything that is lent out right now, where I can cancel a lending with a reason, so I can handle problems (a tool that never comes back, a tool lent to the wrong student, ...) and still see afterwards what happened.
 
 **Migration**
-- Create a new `reservations` table with: `id`, `toolId` (foreign key to `tools.id`), `studentId` (foreign key to `students.id`), `startDate` and `endDate` (text, `YYYY-MM-DD`), `canceledAt` (empty unless canceled) and `cancelReason` (empty unless canceled).
-- A canceled reservation is **not deleted**: it stays in the database, so there is a history of what happened and why.
-
-**Seeds**
-- Add `seeds/02_reservations.ts` with a few sample reservations (some in the past, some in the future), so the page has something to show.
-- Think about it: reservations need tools and students, but tools are not seeded. Add a few sample tools in the same seed, but only when the `tools` table is empty.
-- The seed must be safe to run twice: do not add reservations again when there already are some.
+- Add a `lentAt` text column to `tools`. It is empty while the tool is available.
+- In a separate migration, create a new `lending_cancellations` table with: `id`, `toolId` (foreign key to `tools.id`), `studentId` (foreign key to `students.id`), `reason` (required) and `canceledAt` (required).
+- A canceled lending is **not forgotten**: it is stored in `lending_cancellations`, so there is a record of what happened and why.
+- Think about it: deleting a tool that has cancellations must still work. Look up `onDelete` in the Knex documentation.
 
 **Endpoints**
-- New: `GET /api/reservations`: returns all reservations, including the canceled ones, with the `name` of the tool and the `firstName` of the student (tip: `join`). Sort them by `startDate`, the next ones first.
-- New: `POST /api/reservations/:id/cancel` with body `{ reason }`: fills in `canceledAt` (`new Date().toISOString()`) and `cancelReason`, and returns the updated reservation. Returns `400` when the reason is empty, `404` when the reservation does not exist and `409` when it is already canceled.
+- Change `POST /api/tools/:id/lend`: it also fills in `lentAt` (`new Date().toISOString()`). Change `POST /api/tools/:id/return`: it empties `lentAt` again.
+- New: `GET /api/lendings`: returns all tools that are lent out right now, with the `name` of the tool, the `firstName` of the student and `lentAt`, oldest first. Tip: `join`, and select your columns one by one, because `tools` and `students` both have an `id`.
+- New: `POST /api/tools/:id/cancel-lending` with body `{ reason }`: makes the tool available again and stores a row in `lending_cancellations` with the student who had the tool. Returns `400` when the reason is empty, `404` when the tool does not exist and `409` when the tool is not lent out. Tip: both changes belong together, so look up `db.transaction` in the Knex documentation.
 - There is no login yet, so everyone who knows the URL can use these endpoints. Never return student numbers: they are part of how students identify themselves. Think about it: what must be added before this goes live?
 
 **Frontend**
-- Make a `Reservation` class in `public/`, like the `Tool` class, with a `renderHtmlString()` that renders one row of a table.
+- Make a `Lending` class in `public/`, like the `Tool` class, with a `renderHtmlString()` that renders one row of a table.
 - Add a new page `public/coordinator.html` with its own script `public/coordinator.ts`, and link to it from `index.html` (and back).
-- The page shows a table of all reservations: tool, first name, from, until and status ("Active", or "Canceled on ..." with the reason).
-- Every active reservation has a **Cancel** button. It asks for a reason (required) and then cancels the reservation. A canceled reservation has no button.
+- The page shows a table of everything that is lent out: tool, first name and lent since.
+- Every row has a **Cancel** button. It asks for a reason (required) and then cancels the lending. The row disappears, and the tool is available again on the front page.
 
 **Acceptance criteria**
-- [ ] The page shows all reservations, including canceled ones, and no student numbers.
-- [ ] Canceling with a reason shows "Canceled" and the reason on the page, and the row is still in the database with `canceledAt` and `cancelReason` filled in.
+- [ ] The page only shows tools that are lent out right now, and no student numbers.
+- [ ] Canceling with a reason removes the row, the tool is available again, and `lending_cancellations` has a new row with the tool, the student, the reason and the date.
 - [ ] Canceling without a reason returns `400`, and the page shows a message.
-- [ ] Canceling a reservation that is already canceled returns `409`, and one that does not exist returns `404`.
-- [ ] A reason like `<b>broken</b>` is shown as plain text, not as bold.
-- [ ] Running `npm run seed` twice does not create double reservations or tools.
-- [ ] `npx knex migrate:rollback` followed by `npm run migrate` and `npm run seed` works without errors.
+- [ ] Canceling a tool that is not lent out returns `409`, and one that does not exist returns `404`.
+- [ ] `lentAt` is filled in when a tool is lent out and empty again after it is returned.
+- [ ] Deleting a tool that has cancellations works.
+- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
+
+---
+
+## ML-8 · Reservations
+
+**Branch:** `feature/ml-8-reservations`
+
+**Story:** As a student, I want to reserve a tool for a period in the future, so it is there when I need it.
+
+Reservations do not influence lending in this ticket: only the reservations themselves are stored and shown.
+
+**Migration**
+- Create a new `reservations` table with: `id`, `toolId` (foreign key to `tools.id`), `studentId` (foreign key to `students.id`), `startDate` and `endDate` (both required, text in the format `YYYY-MM-DD`).
+- Think about it: deleting a tool that has reservations must still work. Look up `onDelete` in the Knex documentation.
+
+**Endpoints**
+- New: `POST /api/tools/:id/reservations` with body `{ studentNumber, firstName, startDate, endDate }`. The student is checked the same way as when lending a tool (`401` when the number and first name do not match). Returns `201` with the new reservation.
+  - `400` when a date is missing or is not a valid `YYYY-MM-DD` date, when `startDate` is in the past, or when `endDate` is before `startDate`.
+  - `404` when the tool does not exist.
+  - `409` when the tool is already reserved on one of those days. Reservations that share a day count as overlapping. Tip: dates in this format can be compared as text.
+- New: `GET /api/tools/:id/reservations`: returns the upcoming reservations of one tool (`endDate` is today or later), earliest first, with `firstName`, `startDate` and `endDate`. Never return student numbers. Returns `404` when the tool does not exist.
+
+**Frontend**
+- Make a `Reservation` class in `public/`, like the `Tool` class, with a `renderHtmlString()` that renders one reservation.
+- Add a **Reserve** button to every tool. It shows the upcoming reservations of that tool (first name, from, until) and a small form with two date inputs. The student number and first name come from the "Who are you?" inputs at the top of the page.
+- Show the message of the API when something goes wrong (not recognized, overlapping, invalid dates).
+
+**Acceptance criteria**
+- [ ] A reservation for next week is saved and shows up in the list of the tool.
+- [ ] A second reservation that overlaps the first one returns `409`.
+- [ ] A reservation that starts on the day another one ends returns `409`.
+- [ ] A reservation right after the end of another one works.
+- [ ] An end date before the start date, a start date in the past, or a date like `2026-13-45` returns `400`.
+- [ ] A wrong first name for the student number returns `401`.
+- [ ] A tool that does not exist returns `404`.
+- [ ] No response contains student numbers.
+- [ ] Deleting a tool that has reservations works, and its reservations are gone too.
+- [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.

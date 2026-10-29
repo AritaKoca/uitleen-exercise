@@ -22,6 +22,7 @@ Notes for humans (these comments are NOT sent to the AI agent):
 - **R8 No secrets:** No API keys, tokens, passwords or private URLs are committed.
 - **R9 Docs are updated:** When endpoints or migrations change, the API table and the migration log in `README.md` are updated.
 - **R10 Scope:** The change does what the PR title and description say, without unrelated refactors. Any new dependency is mentioned in the description.
+- **R11 Git conventions:** The branch is named after the ticket (`feature/ml-<number>-<short-name>`). Commit messages follow Conventional Commits (`type(scope): description`, where the type is feat, fix, build, chore, ci, docs, style, refactor, perf or test), and every commit has one purpose.
 
 ## Topic-specific requirements
 
