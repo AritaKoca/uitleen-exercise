@@ -105,3 +105,39 @@ Every pull request is checked automatically against `.github/pr-requirements.md`
 - [ ] Creating a category that already exists returns `409`.
 - [ ] Adding a tool with a category that does not exist returns `404`.
 - [ ] `npx knex migrate:rollback` followed by `npm run migrate` works without errors.
+
+---
+
+## ML-4 · Register new students
+
+**Branch:** `feature/ml-4-student-registration`
+
+**Story:** As a new student, I want to register myself with my student number and first name, so I can lend out tools.
+
+**Migration**
+- Create a new `roles` table with: `id` and `name` (required, unique).
+- In a separate migration, add a `roleId` column (foreign key to `roles.id`) to `students`.
+- Think about it: the students that already exist have no role yet. How do they get one? Tip: the seeds run after the migrations.
+
+**Seeds**
+- Add `seeds/00_roles.ts` (the `00` makes it run before `01_students.ts`) that seeds the roles `STUDENT` and `ADMIN`. `ADMIN` is not used yet. Like the students seed, it must be safe to run twice.
+- Change `seeds/01_students.ts` so every seeded student gets the `STUDENT` role, including students that are already in the database without a role.
+
+**Endpoints**
+- New: `POST /api/students` with body `{ studentNumber, firstName }`: creates the student with the role `STUDENT` and returns `201` with the new student, including the name of the role. Returns `400` when the student number is not exactly 5 digits or the first name is empty, and `409` when the student number is already registered.
+- The role is looked up by name on the server. It is never taken from `req.body`: a visitor must not be able to register as `ADMIN`.
+- Tip: keep the student number a string, so `00123` keeps its zeros.
+
+**Frontend**
+- Add a "Register" form with a student number input, a first name input and a **Register** button.
+- Show a message when it worked ("Welcome, Emma! You can now lend out tools.") and the message of the API when it did not (e.g. the student number is already registered).
+
+**Acceptance criteria**
+- [ ] A newly registered student has the role `STUDENT`.
+- [ ] A newly registered student can lend out a tool right away with the same student number and first name.
+- [ ] Sending `"role": "ADMIN"` or a `roleId` in the body of `POST /api/students` changes nothing: the student still gets `STUDENT`.
+- [ ] A student number that is not 5 digits, or an empty first name, returns `400`.
+- [ ] Registering a student number that already exists returns `409`.
+- [ ] Running `npm run seed` twice does not create double roles and does not fail.
+- [ ] After `npm run seed`, all 20 seeded students have the role `STUDENT`.
+- [ ] `npx knex migrate:rollback` followed by `npm run migrate` and `npm run seed` works without errors.
